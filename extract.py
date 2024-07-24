@@ -12,10 +12,10 @@ def extract_text(pdf_path):
             img_name = f"{pdf_path[:-4]}_image_{i}.png"
             img.save(f'{os.getcwd()}/{img_name}')  # Saving the image in current directory
         text += page.extractText()
-    print(text)
+    # print(text)
     return text
 
 
-pdfpath = r"C:\Users\HP\Desktop\SpecializationProject\sample 4.pdf"
-extract_text(pdfpath)
+# pdfpath = r"C:\Users\HP\Desktop\SpecializationProject\sample 4.pdf"
+# extract_text(pdfpath)
 
