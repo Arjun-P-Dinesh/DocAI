@@ -1,6 +1,6 @@
 import streamlit as st
 
-from autofill import autofill_text
+# from autofill import autofill_text
 
 def main():
     """Doc AI"""
