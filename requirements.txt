@@ -4,6 +4,7 @@ spacy
 sumy
 nltk
 sentence-transformers
+streamlit_option_menu
 torch
 wordcloud
 matplotlib
