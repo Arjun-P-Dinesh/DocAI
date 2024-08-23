@@ -1,12 +1,13 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
 from textblob import TextBlob
+import base64
 import spacy
-from sumy.parsers.plaintext import PlaintextParser
+import subprocess
+import sys
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
-from PyPDF2 import PdfReader
 import io
-import google.generativeai as genai
 import nltk
 from sentence_transformers import SentenceTransformer, util
 import torch
@@ -19,17 +20,33 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import pyttsx3
 import pandas as pd
 from docx import Document
-import base64
 from fpdf import FPDF
 import textstat
 from transformers import BertForQuestionAnswering, BertTokenizer
 
 nltk.download('punkt')
 
-# Set up the Gemini API key
-genai.configure(api_key="YOUR_API_KEY_HERE")
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-# Function for Sumy Summarization
+try:
+    from sumy.parsers.plaintext import PlaintextParser
+except ImportError:
+    install("sumy")
+    from sumy.parsers.plaintext import PlaintextParser
+
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    install("PyPDF2")
+    from PyPDF2 import PdfReader
+
+try:
+    from docx import Document
+except ImportError:
+    install("python-docx")
+    from docx import Document
+
 def sumy_summarizer(docx, num_sentences=3):
     parser = PlaintextParser.from_string(docx, Tokenizer("english"))
     lex_summarizer = LexRankSummarizer()
@@ -38,15 +55,6 @@ def sumy_summarizer(docx, num_sentences=3):
     result = ' '.join(summary_list)
     return result
 
-# Function for GPT-4 Summarization (now using Gemini)
-def abstractive_summarizer(docx):
-    model = genai.GenerativeModel(model_name="gemini-pro")
-    prompt = f"Summarize the following text:\n\n{docx}"
-    response = model.generate_content(prompt)
-    summary = response.text.strip()
-    return summary
-
-# Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PdfReader(pdf_file)
     text = ""
@@ -55,80 +63,7 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text()
     return text
 
-# Function for Q&A using BERT
-def answer_question_bert(text, question):
-    model_name = "bert-large-uncased-whole-word-masking-finetuned-squad"
-    tokenizer = BertTokenizer.from_pretrained(model_name)
-    model = BertForQuestionAnswering.from_pretrained(model_name)
-    
-    inputs = tokenizer.encode_plus(question, text, add_special_tokens=True, return_tensors="pt")
-    input_ids = inputs["input_ids"].tolist()[0]
-    
-    text_tokens = tokenizer.convert_ids_to_tokens(input_ids)
-    answer_start_scores, answer_end_scores = model(**inputs)
-    
-    answer_start = torch.argmax(answer_start_scores)
-    answer_end = torch.argmax(answer_end_scores) + 1
-    
-    answer = tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(input_ids[answer_start:answer_end]))
-    return answer
-
-# Function for Translation using Gemini
-def translate_text(text, target_language):
-    model = genai.GenerativeModel(model_name="gemini-pro")
-    prompt = f"Translate the following text to {target_language}:\n\n{text}"
-    response = model.generate_content(prompt)
-    translated_text = response.text.strip()
-    return translated_text
-
-# Function to visualize entities
-def visualize_entities(my_text):
-    nlp = spacy.load('en_core_web_sm')
-    docx = nlp(my_text)
-    html = spacy.displacy.render(docx, style='ent', jupyter=False)
-    return html
-
-# Function to generate word cloud
-def generate_wordcloud(text):
-    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
-    plt.figure(figsize=(10, 5))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis('off')
-    return plt
-
-# Function for Language Detection
-def detect_language(text):
-    return detect(text)
-
-# Function for Voice Output
-def speak_text(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-# Function for exporting results
-def export_results(text, filename, format):
-    if format == 'PDF':
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(200, 10, text)
-        pdf.output(filename)
-    elif format == 'DOCX':
-        doc = Document()
-        doc.add_paragraph(text)
-        doc.save(filename)
-    elif format == 'CSV':
-        df = pd.DataFrame({"Text": [text]})
-        df.to_csv(filename, index=False)
-
-# Function for advanced analytics
-def text_analytics(text):
-    blob = TextBlob(text)
-    sentiment = blob.sentiment
-    readability = textstat.flesch_reading_ease(text)
-    return sentiment, readability
-
+@st.cache_data
 def get_img_as_base64(file):
     with open(file, "rb") as f:
         data = f.read()
@@ -164,78 +99,182 @@ right: 2rem;
 """
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
+def answer_question_bert(text, question):
+    model_name = "bert-large-uncased-whole-word-masking-finetuned-squad"
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+    model = BertForQuestionAnswering.from_pretrained(model_name)
+    
+    inputs = tokenizer.encode_plus(question, text, add_special_tokens=True, return_tensors="pt")
+    input_ids = inputs["input_ids"].tolist()[0]
+    
+    text_tokens = tokenizer.convert_ids_to_tokens(input_ids)
+    answer_start_scores, answer_end_scores = model(**inputs)
+    
+    answer_start = torch.argmax(answer_start_scores)
+    answer_end = torch.argmax(answer_end_scores) + 1
+    
+    answer = tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(input_ids[answer_start:answer_end]))
+    return answer
+
+def translate_text(text, target_language):
+    openai.api_key = 'groq_api_key'
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=f"Translate the following text to {target_language}:\n\n{text}",
+        max_tokens=150,
+        n=1,
+        stop=None,
+        temperature=0.3,
+    )
+    translated_text = response.choices[0].text.strip()
+    return translated_text
+
+def visualize_entities(my_text):
+    nlp = spacy.load('en_core_web_sm')
+    docx = nlp(my_text)
+    html = spacy.displacy.render(docx, style='ent', jupyter=False)
+    return html
+
+def generate_wordcloud(text):
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    return plt
+
+def detect_language(text):
+    return detect(text)
+
+def speak_text(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+def export_results(text, filename, format):
+    if format == 'PDF':
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(200, 10, text)
+        pdf.output(filename)
+    elif format == 'DOCX':
+        doc = Document()
+        doc.add_paragraph(text)
+        doc.save(filename)
+    elif format == 'CSV':
+        df = pd.DataFrame({"Text": [text]})
+        df.to_csv(filename, index=False)
+
+def text_analytics(text):
+    blob = TextBlob(text)
+    sentiment = blob.sentiment
+    readability = textstat.flesch_reading_ease(text)
+    return sentiment, readability
+
 def main():
-    """Eda Mowne"""
+    """Doc AI: Document Processing and Management System"""
 
-    # Title
-    st.title("Doc AI")
-    st.subheader("Document Processing and Management System")
-    st.markdown("""
-        #### Description
-        + Doc AI is a Document Processing and Management System designed to streamline the handling and organization of documents.
-        """)
+    # Setting up the option menu for navigation
+    selected_option = option_menu(
+        menu_title="Main Menu",  # required
+        options=["HOME", "SUMMARIZATION", "TRANSLATION", "TEXT-TO-SPEECH", "EXPORT-RESULTS", "QUESTION-ANSWERING", "ADDITIONAL-FUNCTIONS"],  # required
+        icons=["house", "book", "translate", "volume-up", "cloud-upload", "question-circle", "layers"],  # optional
+        menu_icon="cast",  # optional
+        default_index=0,  # optional
+        orientation="horizontal",
+        styles={
+            "container": {"padding": "0!important", "background-color": "#0E1117"},
+            "icon": {"color": "white", "font-size": "16px"},
+            "nav-link": {"font-size": "16px", "text-align": "left", "margin": "0px", "--hover-color": "grey"},
+            "nav-link-selected": {"background-color": "blue"},
+        },
+    )
 
-    # PDF Uploader
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+    uploaded_file = st.sidebar.file_uploader("Upload a PDF file", type=["pdf"])
+
     if uploaded_file is not None:
-        # Extract text from PDF
         text = extract_text_from_pdf(uploaded_file)
-        st.text_area("Extracted Text", text, height=200)
 
-        # Named Entity Recognition Visualization
-        if st.checkbox("Show Named Entity Visualization"):
-            st.subheader("Named Entity Recognition")
-            entity_html = visualize_entities(text)
-            st.write(entity_html, unsafe_allow_html=True)
+    if selected_option == "HOME":
+        st.title("Welcome to Doc AI")
+        st.write("Welcome to Doc AI, where you get all Document solutions in just one place. Use the options in the menu to navigate through the functionalities.")
+        
+        if uploaded_file is not None:
+            st.write("Do you want to see the extracted text?")
+            if st.button("Show Extracted Text"):
+                st.text_area("Extracted Text", text, height=200)
 
-        # Word Cloud Visualization
-        if st.checkbox("Show Word Cloud"):
-            st.subheader("Word Cloud")
-            wordcloud_plot = generate_wordcloud(text)
-            st.pyplot(wordcloud_plot)
-
-        # Summarization
-        if st.checkbox("Show Text Summarization"):
-            st.subheader("Summarize Your Text")
-            summary_type = st.selectbox("Choose Summarization Type", ["Extractive (Sumy)", "Abstractive (Gemini)"])
+    elif selected_option == "SUMMARIZATION":
+        st.title("Text Summarization")
+        if uploaded_file is not None:
             num_sentences = st.slider("Number of Sentences (for Extractive Summarization)", 1, 10, 3)
-
-            if summary_type == "Extractive (Sumy)":
-                summary_result = sumy_summarizer(text, num_sentences)
-            else:
-                summary_result = abstractive_summarizer(text)
-                
+            summary_result = sumy_summarizer(text, num_sentences)
             st.success(summary_result)
+            
+            if st.button("Show Keywords"):
+                tfidf_vectorizer = TfidfVectorizer()
+                tfidf_matrix = tfidf_vectorizer.fit_transform([text])
+                feature_names = tfidf_vectorizer.get_feature_names_out()
+                dense = tfidf_matrix.todense()
+                text_dense = dense.tolist()[0]
+                keywords = [feature_names[i] for i in range(len(text_dense)) if text_dense[i] > 0.1]
+                st.write("Keywords:", keywords)
 
-        # Translation
-        if st.checkbox("Translate Text"):
-            st.subheader("Translate Your Text")
+    elif selected_option == "TRANSLATION":
+        st.title("Text Translation")
+        if uploaded_file is not None:
             target_language = st.selectbox("Select Target Language", ['es', 'fr', 'de', 'zh'])
             if st.button("Translate"):
                 translated_text = translate_text(text, target_language)
                 st.success(translated_text)
+    
+    elif selected_option == "TEXT TO SPEECH":
+        st.title("Text to Speech")
+        if uploaded_file is not None:
+            summarized_text = sumy_summarizer(text)
+            if st.button("Show Summarized Text"):
+                st.write(summarized_text)
+            if st.button("Play Summarized Text"):
+                speak_text(summarized_text)
 
-        # Language Detection
-        if st.checkbox("Detect Language"):
-            st.subheader("Detected Language")
-            detected_lang = detect_language(text)
-            st.success(f"The detected language is: {detected_lang}")
-
-        # Voice Output for Summarized Text
-        if st.checkbox("Voice Output for Summarized Text"):
-            st.subheader("Listen to the Summary")
-            summary_result = sumy_summarizer(text)
-            if st.button("Play Summary"):
-                speak_text(summary_result)
-
-        # Export Results
-        if st.checkbox("Export Results"):
-            st.subheader("Export the results")
+    elif selected_option == "EXPORT RESULTS":
+        st.title("Export Results")
+        if uploaded_file is not None:
             export_format = st.selectbox("Select export format", ["PDF", "DOCX", "CSV"])
             filename = st.text_input("Enter the filename (without extension)")
             if st.button("Export"):
                 export_results(text, f"{filename}.{export_format.lower()}", export_format)
                 st.success(f"Results exported as {filename}.{export_format.lower()}")
+
+    elif selected_option == "QUESTION ANSWERING":
+        st.title("Question Answering")
+        if uploaded_file is not None:
+            question = st.text_input("Ask a question:")
+            if st.button("Get Answer"):
+                answer = answer_question_bert(text, question)
+                st.success(answer)
+
+    elif selected_option == "ADDITIONAL FUNCTIONALITIES":
+        additional_options = st.selectbox("Select Additional Functionality", ["Named Entity Recognition", "Word Cloud", "Text Simplification", "Multi-document Similarity"])
+
+        if uploaded_file is not None:
+            if additional_options == "Named Entity Recognition":
+                st.title("Named Entity Recognition")
+                entity_html = visualize_entities(text)
+                st.write(entity_html, unsafe_allow_html=True)
+            
+            elif additional_options == "Word Cloud":
+                st.title("Word Cloud")
+                wordcloud_plot = generate_wordcloud(text)
+                st.pyplot(wordcloud_plot)
+            
+            elif additional_options == "Text Simplification":
+                st.title("Text Simplification")
+                st.write("Text simplification functionality goes here.")
+            
+            elif additional_options == "Multi-document Similarity":
+                st.title("Multi-document Similarity")
+                st.write("Multi-document similarity functionality goes here.")
 
 if __name__ == '__main__':
     main()
