@@ -1,5 +1,6 @@
 textblob
 pybase64
+PyPDF2
 spacy
 sumy
 nltk
