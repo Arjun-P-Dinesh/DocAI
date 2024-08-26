@@ -14,6 +14,5 @@ seaborn
 langdetect
 scikit-learn
 torch
-numpy>=1.24.0  # Ensure a recent version of numpy
+numpy>=1.24.0
 spacy>=3.7.6,<4.0.0
-thinc>=8.2.2,<8.3.0
