@@ -25,6 +25,8 @@ from transformers import BertForQuestionAnswering, BertTokenizer
 import torch
 import base64
 
+%pip install --upgrade pip
+
 # Initialize OpenAI API (replace 'your_openai_api_key' with your actual API key)
 openai.api_key = 'sk-proj-bVv_AdsTqNdjJqtKrGLYu5xIMTgtnLaWlLQ5duREk6BJ71bI7wh3h26aBTT3BlbkFJ50PDxX_bN-QFY5zO5E07lywllo72jw8m8VW_se9WQhqDgwmGRgNq2cIoMA4'
 
