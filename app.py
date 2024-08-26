@@ -26,7 +26,7 @@ import torch
 import base64
 
 # Initialize OpenAI API (replace 'your_openai_api_key' with your actual API key)
-openai.api_key = 'your_openai_api_key'
+openai.api_key = 'sk-proj-bVv_AdsTqNdjJqtKrGLYu5xIMTgtnLaWlLQ5duREk6BJ71bI7wh3h26aBTT3BlbkFJ50PDxX_bN-QFY5zO5E07lywllo72jw8m8VW_se9WQhqDgwmGRgNq2cIoMA4'
 
 def gpt_summarizer(docx, max_tokens=150, temperature=0.7):
     response = openai.ChatCompletion.create(
