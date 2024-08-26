@@ -26,19 +26,19 @@ import torch
 import base64
 
 # Initialize OpenAI API (replace 'your_openai_api_key' with your actual API key)
-openai.api_key = 'OpenApi Key'
+openai.api_key = 'your_openai_api_key'
 
 def gpt_summarizer(docx, max_tokens=150, temperature=0.7):
-    response = openai.Completion.create(
-        engine="gpt-3.5-turbo",  # You can use "gpt-3.5-turbo" or another model based on your needs
-        prompt=f"Summarize the following text:\n\n{docx}\n\nSummary:",
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"Summarize the following text:\n\n{docx}\n\nSummary:"}
+        ],
         max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
+        temperature=temperature
     )
-    summary = response.choices[0].text.strip()
+    summary = response['choices'][0]['message']['content'].strip()
     return summary
 
 # Function to extract text from PDF
@@ -154,7 +154,7 @@ def main():
     st.set_page_config(page_title="Document AI", layout="wide")
 
     # Set background image
-    img_path = "C:/Users/HP/Downloads/New-Project/Proj2/DocAI1.jpg"
+    img_path = "/images/DocAI1.jpg"
     img_base64 = get_base64_of_bin_file(img_path)
     st.markdown(
         f"""
@@ -202,7 +202,7 @@ def main():
     st.set_page_config(page_title="Document AI", layout="wide")
 
     # Set background image
-    img_path = "C:/Users/HP/Downloads/New-Project/Proj2/DocAI1.jpg"
+    img_path = "/images/DocAI1.jpg"
     img_base64 = get_base64_of_bin_file(img_path)
     st.markdown(
         f"""
@@ -217,7 +217,7 @@ def main():
     )
 
 # Display logo and project description in the sidebar
-    st.sidebar.image("C:/Users/HP/Downloads/New-Project/Proj2/Untitled_design_3_-removebg-preview.png", width=200)
+    st.sidebar.image("images/Untitled_design_3_-removebg-preview.png", width=200)
     st.sidebar.markdown("""
         **DocAI** An intelligent solution for processing, summarizing, and analyzing documents.
     """)
