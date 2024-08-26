@@ -1,7 +1,7 @@
 streamlit
 streamlit-option-menu
 Pillow
-spacy==3.6.0  # Specify a version known to work well with the latest numpy
+spacy==3.7.6
 sumy
 PyPDF2
 openai
@@ -16,4 +16,4 @@ langdetect
 scikit-learn
 torch
 numpy>=1.24.0  # Ensure a recent version of numpy
-thinc>=8.1.0  # Ensure a version compatible with the specified spacy version
+thinc>= 9.0.0 # Ensure a version compatible with the specified spacy version
